@@ -2,15 +2,13 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "./interfaces/IQueue.sol";
-import "./interfaces/IVault.sol";
-import "./interfaces/IMultisigAuth.sol";
-import "./interfaces/IGuard.sol";
-import "./interfaces/IAresTypes.sol";
+import "src/interfaces/IQueue.sol";
+import "src/interfaces/IVault.sol";
+import "src/interfaces/IMultisigAuth.sol";
+import "src/interfaces/IGuard.sol";
+import "src/interfaces/IAresTypes.sol";
 
-/// @title Queue - Time-Delayed Execution Engine
-/// @notice Manages proposal lifecycle. Enforces 24hr timelock before execution.
-/// @dev Nonce incremented before execution — prevents replay and reentrancy via state reuse.
+
 contract Queue is IQueue, ReentrancyGuard {
     IVault public vault;
     IMultisigAuth public multisigAuth;
@@ -68,7 +66,7 @@ contract Queue is IQueue, ReentrancyGuard {
         emit ProposalCreated(proposalId, msg.sender);
     }
 
-    /// @notice Move proposal to queue once threshold is reached — starts 24hr timelock
+ 
     function queueProposal(uint256 proposalId) external onlyOwner notPaused {
         Proposal storage p = proposals[proposalId];
 
@@ -83,8 +81,7 @@ contract Queue is IQueue, ReentrancyGuard {
         emit ProposalQueued(proposalId, p.unlockTimestamp);
     }
 
-    /// @notice Execute proposal after 24hr timelock
-    /// @dev Nonce incremented and status updated BEFORE external call — checks-effects-interactions
+    
     function executeProposal(uint256 proposalId) external onlyOwner notPaused nonReentrant {
         Proposal storage p = proposals[proposalId];
 
@@ -104,7 +101,6 @@ contract Queue is IQueue, ReentrancyGuard {
         emit ProposalExecuted(proposalId);
     }
 
-    /// @notice Cancel a pending or queued proposal
     function cancelProposal(uint256 proposalId) external onlyOwner {
         Proposal storage p = proposals[proposalId];
         require(

@@ -2,12 +2,14 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import ".src/modules/Guard.sol";
+import "src/interfaces/IGuard.sol";
 import "src/modules/SigVerifier.sol";
 import "src/modules/MultisigAuth.sol";
 import "src/modules/Vault.sol";
+import "src/modules/Guard.sol";
 import "src/modules/Queue.sol";
 import "src/modules/MerkleDistributor.sol";
+import "src/interfaces/IMerkleDistributor.sol";
 import "src/core/AresProtocol.sol";
 import "src/interfaces/IAresTypes.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";

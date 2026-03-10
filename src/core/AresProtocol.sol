@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./interfaces/IAresProtocol.sol";
-import "./interfaces/IQueue.sol";
-import "./interfaces/IMultisigAuth.sol";
-import "./interfaces/IMerkleDistributor.sol";
-import "./interfaces/IVault.sol";
-import "./interfaces/IGuard.sol";
+import "src/interfaces/IAresProtocol.sol";
+import "src/interfaces/IQueue.sol";
+import "src/interfaces/IMultisigAuth.sol";
+import "src/interfaces/IMerkleDistributor.sol";
+import "src/interfaces/IVault.sol";
+import "src/interfaces/IGuard.sol";
 
 /// @title AresProtocol - System Coordinator
 /// @notice Single entry point for all user interactions. Delegates to specialized contracts.

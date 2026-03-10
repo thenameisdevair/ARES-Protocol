@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./interfaces/IMultisigAuth.sol";
-import "./interfaces/ISigVerifier.sol";
-import "./interfaces/IGuard.sol";
+import "src/interfaces/IMultisigAuth.sol";
+import "src/interfaces/ISigVerifier.sol";
+import "src/interfaces/IGuard.sol";
 
-/// @title MultisigAuth - Owner Registry and Confirmation Tracking
-/// @notice Immutable owner set set at deployment. Tracks confirmations per proposal.
-/// @dev Removes SPOF — threshold of owners required before any proposal advances.
 contract MultisigAuth is IMultisigAuth {
     ISigVerifier public sigVerifier;
     IGuard public guard;
@@ -43,8 +40,6 @@ contract MultisigAuth is IMultisigAuth {
         _;
     }
 
-    /// @param _owners Immutable owner set
-    /// @param _threshold Minimum confirmations required
     constructor(
         address[] memory _owners,
         uint256 _threshold,
@@ -66,8 +61,7 @@ contract MultisigAuth is IMultisigAuth {
         guard = IGuard(_guard);
     }
 
-    /// @notice Register proposal data for confirmation tracking
-    /// @dev Called by Queue when a proposal is created
+
     function registerProposal(
         uint256 proposalId,
         address to,
@@ -79,8 +73,6 @@ contract MultisigAuth is IMultisigAuth {
         _proposalData[proposalId] = ProposalData(to, amount, data, nonce, true);
     }
 
-    /// @notice Confirm proposal with EIP-712 signature
-    /// @dev Verifies signature via SigVerifier — recovered signer must match caller
     function confirmProposal(
         uint256 proposalId,
         bytes calldata signature

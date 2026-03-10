@@ -3,13 +3,11 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./interfaces/IMerkleDistributor.sol";
-import "./interfaces/IGuard.sol";
-import "./libraries/AresLib.sol";
+import "src/interfaces/IMerkleDistributor.sol";
+import "src/interfaces/IGuard.sol";
+import "src/libraries/AresLib.sol";
 
-/// @title MerkleDistributor - Contributor Reward Distribution
-/// @notice Verifies contributor claims via Merkle proof. Each claim window resets claims.
-/// @dev Uses AresLib.buildMerkleLeaf for consistent leaf encoding.
+
 contract MerkleDistributor is IMerkleDistributor {
     IERC20 public immutable token;
     IGuard public guard;
@@ -38,8 +36,6 @@ contract MerkleDistributor is IMerkleDistributor {
         multisig = _multisig;
     }
 
-    /// @notice Claim reward using Merkle proof
-    /// @dev Leaf built via AresLib — consistent encoding with off-chain tree generation
     function claim(
         address contributor,
         uint256 amount,
@@ -62,8 +58,7 @@ contract MerkleDistributor is IMerkleDistributor {
         emit RewardClaimed(contributor, amount, currentWindow);
     }
 
-    /// @notice Update Merkle root — opens new claim window
-    /// @dev Only multisig can update — prevents root manipulation
+
     function updateMerkleRoot(bytes32 newRoot) external onlyMultisig {
         require(newRoot != bytes32(0), "Merkle: zero root");
         merkleRoot = newRoot;

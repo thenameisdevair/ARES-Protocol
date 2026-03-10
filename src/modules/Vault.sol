@@ -3,12 +3,11 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "./interfaces/IVault.sol";
-import "./interfaces/IGuard.sol";
+import "src/interfaces/IVault.sol";
+import "src/interfaces/IGuard.sol";
 
-/// @title Vault - ERC20 Treasury Storage
-/// @notice Holds a single ERC20 token set at deployment. Releases funds only through Queue.
-/// @dev Drain threshold triggers Guard circuit breaker to prevent large treasury drains.
+
+
 contract Vault is IVault, ReentrancyGuard {
     IERC20 public immutable token;
     IGuard public guard;
@@ -26,9 +25,7 @@ contract Vault is IVault, ReentrancyGuard {
         _;
     }
 
-    /// @param _token Single ERC20 token accepted — immutable after deployment
-    /// @param _guard Circuit breaker contract
-    /// @param _drainThreshold Percentage that triggers circuit breaker
+
     constructor(address _token, address _guard, uint256 _drainThreshold) {
         require(_token != address(0), "Vault: zero token");
         require(_drainThreshold > 0 && _drainThreshold < 100, "Vault: invalid threshold");
@@ -37,15 +34,13 @@ contract Vault is IVault, ReentrancyGuard {
         drainThreshold = _drainThreshold;
     }
 
-    /// @notice Set Queue address — callable only once after deployment
+
     function setQueue(address _queue) external {
         require(queue == address(0), "Vault: queue already set");
         require(_queue != address(0), "Vault: zero address");
         queue = _queue;
     }
 
-    /// @notice Deposit ERC20 into treasury
-    /// @dev Balance-delta check handles fee-on-transfer edge cases
     function deposit(uint256 amount) external notPaused nonReentrant {
         require(amount > 0, "Vault: zero amount");
 
@@ -58,8 +53,7 @@ contract Vault is IVault, ReentrancyGuard {
         emit Deposited(msg.sender, amount);
     }
 
-    /// @notice Release funds — only callable by Queue after timelock
-    /// @dev Triggers Guard if release exceeds drain threshold — checks-effects-interactions
+
     function releaseFunds(address to, uint256 amount) external onlyQueue notPaused nonReentrant {
         require(to != address(0), "Vault: zero recipient");
         require(amount > 0, "Vault: zero amount");

@@ -3,12 +3,9 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import "./interfaces/ISigVerifier.sol";
-import "./libraries/AresLib.sol";
+import "src/interfaces/ISigVerifier.sol";
+import "src/libraries/AresLib.sol";
 
-/// @title SigVerifier - Stateless EIP-712 Signature Verification
-/// @notice Verifies owner signatures against proposal data.
-/// @dev Prevents: signature replay, malleability, cross-chain replay, domain collision.
 contract SigVerifier is ISigVerifier, EIP712 {
     using ECDSA for bytes32;
     using AresLib for bytes32;
@@ -18,12 +15,8 @@ contract SigVerifier is ISigVerifier, EIP712 {
         "Proposal(uint256 id,address to,uint256 amount,bytes data,uint256 nonce)"
     );
 
-    /// @param name Protocol name — part of domain separator
-    /// @param version Protocol version — part of domain separator
     constructor() EIP712("AresProtocol", "1") {}
 
-    /// @notice Recover signer address from signed proposal data
-    /// @dev Domain separator binds signature to this contract + chainId — kills cross-chain replay
     function verifySignature(
         uint256 id,
         address to,
