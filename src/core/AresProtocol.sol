@@ -8,9 +8,7 @@ import "src/interfaces/IMerkleDistributor.sol";
 import "src/interfaces/IVault.sol";
 import "src/interfaces/IGuard.sol";
 
-/// @title AresProtocol - System Coordinator
-/// @notice Single entry point for all user interactions. Delegates to specialized contracts.
-/// @dev Users never interact with sub-contracts directly — all flow through here.
+
 contract AresProtocol is IAresProtocol {
     IQueue public queue;
     IMultisigAuth public multisigAuth;
@@ -37,7 +35,6 @@ contract AresProtocol is IAresProtocol {
         guard = IGuard(_guard);
     }
 
-    /// @notice Submit a new treasury transaction proposal — only owners
     function submitProposal(
         address to,
         uint256 amount,
