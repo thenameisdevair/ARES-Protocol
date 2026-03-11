@@ -1,64 +1,65 @@
-### Security Analysis 
-
-## 1. FlashLoan attack :- flash loan, a legitimate DeFi tool that allows users to borrow massive amounts of digital assets without collateral, provided the funds are returned within the same transaction.
-
-For a flashLoan attack to happen on my system, the attacker needs to become a registered owner and does the borrowin all in one transaction.
-
-# My System
-Owner set is immutable, set at deployment. Cannot be changed. Therefore the attacker cannot borrow thier way into the owner registry.Becauese of immutability , the attack cannot even begin
-
-How is this seen in my Contract 
-# Layer1. - Immutable owner set in MultisigAuth.sol prevents attacker from gaining signing authority. 
-# Layer2 -  Threshold multisig makes that even a compromised single key cannot pass a proposal alone.
-# Layer 3 - 24hr timelock gives legitimate owners time to detect and trigger Guard.sol emergency pause. 
+### ARES Protocol - Security Analysis 
 
 
+## What Am I Protecting Against
 
-### Signature Reply + Malleability. 
+The task gave me a list of attack classes ARES must prevent: reentrancy, signature replay, double claim, unauthorized execution, timelock bypass, and governance griefing. Then separately, it mentioned flash-loan governance manipulation, large treasury drains, and proposal griefing under the governance section.
 
-2. Signature Replay + Malleability Attack: A Signature Replay and Malleability attack occurs due to the exploiting of signatures, making them reusable on different chains, or on the same protocol after first use.
+That's a lot. Before I started thinking about solutions, I asked myself — why does each one of these matter specifically for a treasury? What does an attacker actually want?
 
-EIP-712 uses a domain separator logic that hashes the contract address and chainId together, creating unique signatures, therefore eliminating cross-chain replay. The nonce, managed by Queue.sol and incremented before execution, ensures each signature is bound to one specific proposal — subsequent transactions produce a different nonce, making replay useless. OpenZeppelin's ECDSA library enforces a low canonical s value, making it mathematically difficult to rearrange (r, s) into (r, n-s) for reuse.
-How this is seen in the contracts:
+They want one of three things. Either they want to extract funds they aren't entitled to. Or they want to prevent legitimate owners from doing anything. Or they want to corrupt the system state so a future attack becomes easier. Every attack on that list maps to one of those three objectives.
 
-Layer 1 — SigVerifier.sol performs EIP-712 structured hash verification, binding signatures to one contract on one chain.
-
-Layer 2 — Queue.sol manages and increments the nonce before execution, following checks-effects-interactions pattern, preventing both replay and reentrancy through nonce reuse.
-
-Layer 3 — OpenZeppelin ECDSA canonical form enforced inside SigVerifier.sol eliminates malleability at the cryptographic level.
+So let me go through them.
 
 
-### Reentrancy + Timelock Bypass
+## Reentrancy
 
-3. Reentrancy + Timelock Bypass: A reentrancy attack occurs when a malicious contract repeatedly calls back into the Vault before the first execution completes, draining funds. A timelock bypass attempts to execute a queued transaction before the mandatory delay has elapsed.
+What is a Reentranct Attack.
 
-ARES prevents this through a combination of architectural pattern enforcement and OpenZeppelin's ReentrancyGuard. State is always updated before external calls — checks-effects-interactions — meaning by the time the ERC20 transfer occurs, the proposal status is already marked executed. The unlockTimestamp is verified by Queue.sol before any execution is triggered, making it impossible to execute before the 24hr window expires.
-How this is seen in the contracts:
+A reentrancy attack happens when a malicious contract calls back into the victim contract during execution — before the first call has finished. In a treasury this means: attacker proposes a withdrawal to their contract, execution starts, their contract calls back in, drains funds again before the proposal status updates to Executed.
 
-Layer 1 — Queue.sol enforces block.timestamp >= unlockTimestamp before execution.
+How does ARES prevent this? Three layers. 
 
-Layer 2 — Vault.sol inherits OpenZeppelin ReentrancyGuard, applying nonReentrant modifier on all fund release functions.
+First — `Queue.executeProposal` follows checks-effects-interactions strictly. The proposal status is set to `Executed` before `Vault.releaseFunds` is called. If a reentrant call comes in, it hits the status check — proposal is already Executed, revert. 
 
-Layer 3 — Proposal status is updated to executed before ERC20 transfer, following checks-effects-interactions pattern.
+Second — the nonce is incremented before the transfer. Same logic, second layer. 
 
-4. Merkle Root Manipulation: A Merkle root manipulation attack occurs when an attacker attempts to submit a fraudulent Merkle root, allowing unauthorized addresses to claim rewards or claim more than their entitled amount.
+Third — `Vault.sol` inherits OpenZeppelin's `ReentrancyGuard` and applies `nonReentrant` to `releaseFunds`. Architecture prevents it. The modifier backs it up.
 
-ARES restricts Merkle root updates exclusively to the multisig threshold — no single owner can update the root unilaterally. Each claim window has a fixed open period, after which the root is updated only through a fully verified proposal pipeline. Each address can only claim once per root state, tracked through a claimed mapping, preventing double claiming within the same window.
-How this is seen in the contracts:
+## Signature Replay and Malleability
 
-Layer 1 — MerkleDistributor.sol only accepts root updates authorized through the full MultisigAuth.sol threshold.
+I discovered early that multisig alone doesn't prevent signature replay. If the same signature that confirmed a proposal on Ethereum mainnet can be submitted on another chain, or submitted again on the same chain after the first execution, the attacker gets a free second execution.
 
-Layer 2 — A claimed mapping per root state prevents double claiming within the same distribution window.
+This is why I used EIP-712. It constructs a domain separator from the contract address and the chainId. Every signature is cryptographically bound to one specific contract on one specific chain. Cross-chain replay — blocked. Fake contract replay — blocked.
 
-Layer 3 — Merkle proof verification uses OpenZeppelin's MerkleProof.verify(), ensuring only valid leaves against the current root are accepted.
+For same-chain replay, EIP-712 alone isn't enough. That's where the nonce comes in. The nonce lives in `Queue.sol` and increments before every execution. A signature built for nonce 5 is invalid for nonce 6. Once a proposal executes and the nonce changes, that signature is dead.
 
-5. Multisig Griefing: A multisig griefing attack occurs when one or more owners deliberately refuse to sign valid proposals, or flood the system with spam proposals to exhaust other owners or obscure malicious intent.
+For malleability — ECDSA has a known property where for every valid signature `(r, s)`, a second valid signature `(r, n-s)` also exists. OpenZeppelin's ECDSA library enforces that `s` must be in the lower half of the curve order. The malleable version is rejected automatically.
 
-ARES mitigates griefing through threshold design and proposal structure. The threshold is set at deployment — a griefing owner cannot block execution if the remaining owners meet threshold. Spam proposals are economically disincentivized through the mandatory 24hr timelock, making flooding the queue costly in time and coordination. The immutable owner set means no new griefing actors can be introduced after deployment.
-How this is seen in the contracts:
+## Double Claim
 
-Layer 1 — MultisigAuth.sol threshold enforcement means a minority of owners cannot block a legitimate majority.
+If a contributor could claim their reward twice in the same distribution window, the reward pool drains fast. `MerkleDistributor.sol` tracks claims with `hasClaimed[currentWindow][contributor]`. This is checked before any transfer. The mapping is set to `true` before the transfer, not after — checks-effects-interactions again. Second claim hits the check, reverts.
 
-Layer 2 — Queue.sol mandatory 24hr timelock makes proposal spam expensive and visible.
+When the Merkle root updates, `currentWindow` increments. A contributor who claimed in window 1 can claim again in window 2 with a new proof — but their window 1 claim record doesn't carry over.
 
-Layer 3 — Guard.sol circuit breaker can be triggered by the legitimate owner majority to pause the system if griefing is detected.
+## Unauthorized Execution
+Every privileged function checks `onlyOwner` — enforced by MultisigAuth against the immutable owner registry. An address not in that registry cannot propose, confirm, queue, or execute anything. The registry is set at deployment and cannot be modified. There is no `addOwner` function. There is no proposal type that can change it.
+
+`Vault.releaseFunds` additionally checks `onlyQueue`. Even a registered owner calling it directly gets rejected. Funds only move through the full pipeline.
+
+## Timelock Bypass
+
+The timelock is stored as `unlockTimestamp` on the proposal itself — `block.timestamp + 24 hours` set at queue time. `executeProposal` checks `block.timestamp >= unlockTimestamp`. Validators can manipulate timestamps by roughly 15 seconds. A 24-hour window absorbs that drift entirely. There is no way to move `block.timestamp` by 24 hours on any EVM chain.
+
+## Governance Griefing and Flash-Loan Attacks
+
+Flash loan governance attacks work by borrowing voting power — tokens, shares — to reach a threshold, pass a malicious proposal, and repay before the transaction closes. This requires the governance registry to be dynamic. ARES has an immutable owner set. You cannot borrow your way into a fixed registry. The attack has no entry point.
+
+Proposal griefing — flooding the queue with spam proposals — is expensive in ARES. Each proposal sits in the queue for 24 hours minimum. Flooding the system costs sustained gas over sustained time and is fully visible to every owner. The circuit breaker can be triggered the moment griefing is detected.
+
+Large treasury drains are addressed by the drain threshold in `Vault.sol`. If a single transaction tries to move more than the configured percentage of the treasury, Guard is triggered automatically before the transfer. The drain halts. The system pauses.
+
+## Remaining Risks
+
+The immutable owner set is ARES's greatest strength and its most important assumption. If a majority of owner keys are compromised at deployment time, the protocol cannot recover. There is no on-chain recovery mechanism. This is a known tradeoff — mutability enables recovery but introduces takeover risk. ARES chose the stronger security guarantee and accepts the operational responsibility that comes with it. Key management is the trust assumption ARES cannot eliminate on-chain.
+

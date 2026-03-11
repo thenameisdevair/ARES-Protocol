@@ -66,8 +66,7 @@ contract AresProtocol is IAresProtocol {
     function deposit(uint256 amount) external notPaused {
         vault.deposit(amount);
     }
-
-    /// @notice Claim contributor reward via Merkle proof
+    /// @notice Allows Contirbutors to claim Reward
     function claimReward(
         address contributor,
         uint256 amount,
@@ -77,10 +76,12 @@ contract AresProtocol is IAresProtocol {
         emit RewardClaimed(contributor, amount);
     }
 
+    /// @notice Checks if a proposal is Executable
     function isExecutable(uint256 proposalId) external view returns (bool) {
         return queue.isExecutable(proposalId);
     }
 
+    
     function isPaused() external view returns (bool) {
         return guard.isPaused();
     }

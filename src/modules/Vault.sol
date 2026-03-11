@@ -34,13 +34,14 @@ contract Vault is IVault, ReentrancyGuard {
         drainThreshold = _drainThreshold;
     }
 
-
+    // @notice sets a queue ( prevents double queing same thing)
     function setQueue(address _queue) external {
         require(queue == address(0), "Vault: queue already set");
         require(_queue != address(0), "Vault: zero address");
         queue = _queue;
     }
 
+    // @notice allows contributors to deposit pre-defined token
     function deposit(uint256 amount) external notPaused nonReentrant {
         require(amount > 0, "Vault: zero amount");
 
@@ -53,7 +54,7 @@ contract Vault is IVault, ReentrancyGuard {
         emit Deposited(msg.sender, amount);
     }
 
-
+    // @notice Releases funds from the vault, to anyone
     function releaseFunds(address to, uint256 amount) external onlyQueue notPaused nonReentrant {
         require(to != address(0), "Vault: zero recipient");
         require(amount > 0, "Vault: zero amount");
@@ -74,10 +75,12 @@ contract Vault is IVault, ReentrancyGuard {
         emit FundsReleased(to, amount);
     }
 
+    // @notice getter funciton to return the current token balamce of the contract
     function getBalance() external view returns (uint256) {
         return token.balanceOf(address(this));
     }
 
+    // @notice getter function to return the curren token used by the Treasury
     function getToken() external view returns (address) {
         return address(token);
     }

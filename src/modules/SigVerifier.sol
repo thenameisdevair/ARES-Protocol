@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "src/interfaces/ISigVerifier.sol";
 import "src/libraries/AresLib.sol";
 
+// @notice, This exact contract, helps prevent Signature replay Signature malleability Cross-chain replay using EIP721 and openzepplin lib
+
 contract SigVerifier is ISigVerifier, EIP712 {
     using ECDSA for bytes32;
     using AresLib for bytes32;
@@ -17,6 +19,7 @@ contract SigVerifier is ISigVerifier, EIP712 {
 
     constructor() EIP712("AresProtocol", "1") {}
 
+    // @notice. Verifies a Signatrue 
     function verifySignature(
         uint256 id,
         address to,
@@ -37,7 +40,7 @@ contract SigVerifier is ISigVerifier, EIP712 {
         recoveredSigner = digest.recover(signature);
     }
 
-    /// @notice Returns domain separator — bound to contractAddress + chainId
+    // @notice Returns domain separator — bound to contractAddress + chainId
     function getDomainSeparator() external view returns (bytes32) {
         return _domainSeparatorV4();
     }

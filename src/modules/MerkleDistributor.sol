@@ -35,7 +35,7 @@ contract MerkleDistributor is IMerkleDistributor {
         guard = IGuard(_guard);
         multisig = _multisig;
     }
-
+    // @notice Defines what happens for a claim to be possible
     function claim(
         address contributor,
         uint256 amount,
@@ -58,7 +58,7 @@ contract MerkleDistributor is IMerkleDistributor {
         emit RewardClaimed(contributor, amount, currentWindow);
     }
 
-
+    // @notice Updates the merkleRoot (This makes provision for re-distribution of airdrops)
     function updateMerkleRoot(bytes32 newRoot) external onlyMultisig {
         require(newRoot != bytes32(0), "Merkle: zero root");
         merkleRoot = newRoot;
@@ -66,14 +66,15 @@ contract MerkleDistributor is IMerkleDistributor {
         emit MerkleRootUpdated(newRoot, currentWindow);
     }
 
+    // @notice getter functions, to check if a contributor has claimed
     function hasClaimed(address contributor) external view returns (bool) {
         return _claimed[currentWindow][contributor];
     }
-
+    // @notice getter funciton, to return the current merkleroot
     function getMerkleRoot() external view returns (bytes32) {
         return merkleRoot;
     }
-
+    // @notice getter fucntion to returen current window
     function getCurrentWindow() external view returns (uint256) {
         return currentWindow;
     }

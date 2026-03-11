@@ -70,7 +70,7 @@ contract MultisigAuth is IMultisigAuth {
         guard = Guard(_guard);
     }
 
-
+    // @notice To register a Proposal
     function registerProposal(
         uint256 proposalId,
         address to,
@@ -82,7 +82,7 @@ contract MultisigAuth is IMultisigAuth {
         proposalData[proposalId] = ProposalData(to, amount, data, nonce, true);
     }
 
-
+    // @notice to confirm a proposal
     function confirmProposal(
         uint256 proposalId,
         bytes calldata signature
@@ -110,14 +110,17 @@ contract MultisigAuth is IMultisigAuth {
         }
     }
 
+    // @notice Checker funtions to check if threshold has reached for a proposal
     function isThresholdReached(uint256 proposalId) external view returns (bool) {
         return confirmationCount[proposalId] >= threshold;
     }
 
+    // @notice Checker function to check how many confirmations a proposal currently has
     function getConfirmations(uint256 proposalId) external view returns (uint256) {
         return confirmationCount[proposalId];
     }
 
+    // @notice, getter fucntnon check how many owners currently handle the treasury.
     function getOwnerCount() external view returns (uint256) {
         return owners.length;
     }

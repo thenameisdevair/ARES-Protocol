@@ -122,6 +122,8 @@ forge test -vv
 
 ```
 src/
+  core/
+    AresProtocol
   interfaces/
     IAresTypes.sol
     IAresProtocol.sol
@@ -131,13 +133,15 @@ src/
     ISigVerifier.sol
     IMerkleDistributor.sol
     IGuard.sol
-  AresProtocol.sol
-  Vault.sol
-  Queue.sol
-  MultisigAuth.sol
-  SigVerifier.sol
-  MerkleDistributor.sol
-  Guard.sol
+  libraries/
+    AresLib.sol
+  modules/
+    Vault.sol
+    Queue.sol
+    MultisigAuth.sol
+    SigVerifier.sol
+    MerkleDistributor.sol
+    Guard.sol
 test/
   AresProtocol.t.sol
 ```

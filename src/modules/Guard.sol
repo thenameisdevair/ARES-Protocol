@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+
+
+// @notice
 contract Guard {
     bool private _paused;
     address public multisig;
@@ -25,7 +28,7 @@ contract Guard {
         multisig = _multisig;
     }
 
-
+    // @notice Sets Vaults, (Prevents multiple vaults)
     function setVault(address _vault) external onlyMultisig {
         require(vault == address(0), "Guard: vault already set");
         require(_vault != address(0), "Guard: zero address");

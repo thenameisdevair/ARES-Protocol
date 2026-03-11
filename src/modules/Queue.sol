@@ -39,7 +39,7 @@ contract Queue is IQueue, IAresTypes, ReentrancyGuard {
         guard = IGuard(_guard);
     }
 
-    /// @notice Create a new proposal — registers it in MultisigAuth for signing
+    // @notice Create a new proposal — registers it in MultisigAuth for signing
     function createProposal(
         address to,
         uint256 amount,
@@ -67,6 +67,7 @@ contract Queue is IQueue, IAresTypes, ReentrancyGuard {
     }
 
  
+    // @notice  Adds a proposal for queue ( this queuing phase helps mitiagate Timestamp mutation attack)
     function queueProposal(uint256 proposalId) external onlyOwner notPaused {
         IAresTypes.Proposal storage p = proposals[proposalId];
 
@@ -81,7 +82,7 @@ contract Queue is IQueue, IAresTypes, ReentrancyGuard {
         emit ProposalQueued(proposalId, p.unlockTimestamp);
     }
 
-    
+    // @notice This executes a queued proposal, after queing phase has been exhausted. 
     function executeProposal(uint256 proposalId) external onlyOwner notPaused nonReentrant {
         IAresTypes.Proposal storage p = proposals[proposalId];
 
@@ -101,6 +102,7 @@ contract Queue is IQueue, IAresTypes, ReentrancyGuard {
         emit ProposalExecuted(proposalId);
     }
 
+    // @notice helps cancel proposal ( probablty mallicious ones, discovered during the queing period)
     function cancelProposal(uint256 proposalId) external onlyOwner {
         IAresTypes.Proposal storage p = proposals[proposalId];
         require(
