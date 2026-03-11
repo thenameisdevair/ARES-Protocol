@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-/// @title IAresTypes - Shared enums and structs for ARES Protocol
-/// @notice Imported by all interfaces and contracts that use Proposal data
-
+abstract contract IAresTypes {
 enum ProposalStatus {
     Pending,   // Submitted — awaiting confirmations
     Queued,    // Threshold reached — in timelock
@@ -22,4 +20,5 @@ struct Proposal {
     uint256 confirmations;    // Number of owner confirmations
     bool isVerified;          // True once threshold reached
     uint256 nonce;            // Replay protection — incremented before execution
+}
 }

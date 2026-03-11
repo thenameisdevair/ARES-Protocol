@@ -1,26 +1,32 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "src/modules/SigVerifier.sol";
+import "src/modules/Guard.sol";
 import "src/interfaces/IMultisigAuth.sol";
-import "src/interfaces/ISigVerifier.sol";
-import "src/interfaces/IGuard.sol";
+
+
 
 contract MultisigAuth is IMultisigAuth {
-    ISigVerifier public sigVerifier;
-    IGuard public guard;
+    SigVerifier public sigVerifier;
+    Guard public guard;
 
-    // Immutable owner set — cannot be changed after deployment
+    // Immutable owner set — set at deployment, cannot be changed
     mapping(address => bool) public isOwner;
     address[] public owners;
     uint256 public threshold;
 
+    // Tracks which owners have confirmed each proposal
     // proposalId => owner => hasConfirmed
     mapping(uint256 => mapping(address => bool)) public hasConfirmed;
 
-    // proposalId => confirmation count
+    // Tracks total confirmations per proposal
     mapping(uint256 => uint256) public confirmationCount;
 
-    // Internal proposal data needed for signature verification
+    // Tracks proposal data for signature verification
+    // proposalId => (to, amount, data, nonce)
+    mapping(uint256 => ProposalData) public proposalData;
+
     struct ProposalData {
         address to;
         uint256 amount;
@@ -28,7 +34,10 @@ contract MultisigAuth is IMultisigAuth {
         uint256 nonce;
         bool exists;
     }
-    mapping(uint256 => ProposalData) private _proposalData;
+
+    function getThreshold() external view returns (uint256) {
+        return threshold;
+    }
 
     modifier onlyOwner() {
         require(isOwner[msg.sender], "MultisigAuth: not owner");
@@ -46,19 +55,19 @@ contract MultisigAuth is IMultisigAuth {
         address _sigVerifier,
         address _guard
     ) {
-        require(_threshold > 0, "MultisigAuth: zero threshold");
         require(_owners.length >= _threshold, "MultisigAuth: threshold exceeds owners");
+        require(_threshold > 0, "MultisigAuth: threshold zero");
 
         for (uint256 i = 0; i < _owners.length; i++) {
-            require(_owners[i] != address(0), "MultisigAuth: zero address");
+            require(_owners[i] != address(0), "MultisigAuth: zero address owner");
             require(!isOwner[_owners[i]], "MultisigAuth: duplicate owner");
             isOwner[_owners[i]] = true;
             owners.push(_owners[i]);
         }
 
         threshold = _threshold;
-        sigVerifier = ISigVerifier(_sigVerifier);
-        guard = IGuard(_guard);
+        sigVerifier = SigVerifier(_sigVerifier);
+        guard = Guard(_guard);
     }
 
 
@@ -68,24 +77,27 @@ contract MultisigAuth is IMultisigAuth {
         uint256 amount,
         bytes calldata data,
         uint256 nonce
-    ) external onlyOwner notPaused {
-        require(!_proposalData[proposalId].exists, "MultisigAuth: already registered");
-        _proposalData[proposalId] = ProposalData(to, amount, data, nonce, true);
+    ) external notPaused {
+        require(!proposalData[proposalId].exists, "MultisigAuth: proposal exists");
+        proposalData[proposalId] = ProposalData(to, amount, data, nonce, true);
     }
+
 
     function confirmProposal(
         uint256 proposalId,
         bytes calldata signature
     ) external onlyOwner notPaused {
-        require(_proposalData[proposalId].exists, "MultisigAuth: proposal not found");
+        require(proposalData[proposalId].exists, "MultisigAuth: proposal not found");
         require(!hasConfirmed[proposalId][msg.sender], "MultisigAuth: already confirmed");
 
-        ProposalData memory p = _proposalData[proposalId];
+        ProposalData memory p = proposalData[proposalId];
 
-        // Verify EIP-712 signature — recovered signer must be the calling owner
+        // Verify EIP-712 signature — recovers signer address
         address recovered = sigVerifier.verifySignature(
             proposalId, p.to, p.amount, p.data, p.nonce, signature
         );
+
+        // Recovered signer must match the calling owner
         require(recovered == msg.sender, "MultisigAuth: invalid signature");
 
         hasConfirmed[proposalId][msg.sender] = true;
@@ -104,10 +116,6 @@ contract MultisigAuth is IMultisigAuth {
 
     function getConfirmations(uint256 proposalId) external view returns (uint256) {
         return confirmationCount[proposalId];
-    }
-
-    function getThreshold() external view returns (uint256) {
-        return threshold;
     }
 
     function getOwnerCount() external view returns (uint256) {

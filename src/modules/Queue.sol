@@ -9,7 +9,7 @@ import "src/interfaces/IGuard.sol";
 import "src/interfaces/IAresTypes.sol";
 
 
-contract Queue is IQueue, ReentrancyGuard {
+contract Queue is IQueue, IAresTypes, ReentrancyGuard {
     IVault public vault;
     IMultisigAuth public multisigAuth;
     IGuard public guard;
@@ -20,7 +20,7 @@ contract Queue is IQueue, ReentrancyGuard {
     uint256 public nonce;
 
     // proposalId => Proposal
-    mapping(uint256 => Proposal) public proposals;
+    mapping(uint256 => IAresTypes.Proposal) public proposals;
     uint256 public proposalCount;
 
     modifier onlyOwner() {
@@ -47,12 +47,12 @@ contract Queue is IQueue, ReentrancyGuard {
     ) external onlyOwner notPaused returns (uint256 proposalId) {
         proposalId = proposalCount++;
 
-        proposals[proposalId] = Proposal({
+        proposals[proposalId] = IAresTypes.Proposal({
             id: proposalId,
             to: to,
             amount: amount,
             data: data,
-            status: ProposalStatus.Pending,
+            status: IAresTypes.ProposalStatus.Pending,
             submissionTime: block.timestamp,
             unlockTimestamp: 0,
             confirmations: 0,
@@ -68,12 +68,12 @@ contract Queue is IQueue, ReentrancyGuard {
 
  
     function queueProposal(uint256 proposalId) external onlyOwner notPaused {
-        Proposal storage p = proposals[proposalId];
+        IAresTypes.Proposal storage p = proposals[proposalId];
 
-        require(p.status == ProposalStatus.Pending, "Queue: not pending");
+        require(p.status == IAresTypes.ProposalStatus.Pending, "Queue: not pending");
         require(multisigAuth.isThresholdReached(proposalId), "Queue: threshold not reached");
 
-        p.status = ProposalStatus.Queued;
+        p.status = IAresTypes.ProposalStatus.Queued;
         p.isVerified = true;
         p.confirmations = multisigAuth.getConfirmations(proposalId);
         p.unlockTimestamp = block.timestamp + TIMELOCK_DURATION;
@@ -83,9 +83,9 @@ contract Queue is IQueue, ReentrancyGuard {
 
     
     function executeProposal(uint256 proposalId) external onlyOwner notPaused nonReentrant {
-        Proposal storage p = proposals[proposalId];
+        IAresTypes.Proposal storage p = proposals[proposalId];
 
-        require(p.status == ProposalStatus.Queued, "Queue: not queued");
+        require(p.status == IAresTypes.ProposalStatus.Queued, "Queue: not queued");
         require(p.isVerified, "Queue: not verified");
         require(block.timestamp >= p.unlockTimestamp, "Queue: timelock active");
 
@@ -93,7 +93,7 @@ contract Queue is IQueue, ReentrancyGuard {
         nonce++;
 
         // Update state BEFORE releasing funds — checks-effects-interactions
-        p.status = ProposalStatus.Executed;
+        p.status = IAresTypes.ProposalStatus.Executed;
 
         // Release funds from Vault
         vault.releaseFunds(p.to, p.amount);
@@ -102,23 +102,23 @@ contract Queue is IQueue, ReentrancyGuard {
     }
 
     function cancelProposal(uint256 proposalId) external onlyOwner {
-        Proposal storage p = proposals[proposalId];
+        IAresTypes.Proposal storage p = proposals[proposalId];
         require(
-            p.status == ProposalStatus.Pending || p.status == ProposalStatus.Queued,
+            p.status == IAresTypes.ProposalStatus.Pending || p.status == IAresTypes.ProposalStatus.Queued,
             "Queue: cannot cancel"
         );
-        p.status = ProposalStatus.Cancelled;
+        p.status = IAresTypes.ProposalStatus.Cancelled;
         emit ProposalCancelled(proposalId);
     }
 
-    function getProposal(uint256 proposalId) external view returns (Proposal memory) {
+    function getProposal(uint256 proposalId) external view returns (IAresTypes.Proposal memory) {
         return proposals[proposalId];
     }
 
     function isExecutable(uint256 proposalId) external view returns (bool) {
-        Proposal memory p = proposals[proposalId];
+        IAresTypes.Proposal memory p = proposals[proposalId];
         return (
-            p.status == ProposalStatus.Queued &&
+            p.status == IAresTypes.ProposalStatus.Queued &&
             p.isVerified &&
             block.timestamp >= p.unlockTimestamp
         );
